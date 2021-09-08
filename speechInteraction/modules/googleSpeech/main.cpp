@@ -325,6 +325,15 @@ public:
         config->set_language_code(language.c_str());
         config->set_sample_rate_hertz(sample_rate);
         config->set_encoding(RecognitionConfig::LINEAR16);
+        
+        config->set_use_enhanced(true);
+        auto r2 = config->mutable_metadata();
+
+        r2->set_microphone_distance(google::cloud::speech::v1::RecognitionMetadata_MicrophoneDistance_FARFIELD);
+        r2->set_recording_device_type(google::cloud::speech::v1::RecognitionMetadata_RecordingDeviceType_VEHICLE);
+        r2->set_interaction_type(google::cloud::speech::v1::RecognitionMetadata_InteractionType_VOICE_COMMAND);
+        config->PrintDebugString();
+        
     }
 
     /********************************************************/
