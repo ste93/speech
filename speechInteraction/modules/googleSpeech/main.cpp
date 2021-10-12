@@ -81,8 +81,8 @@ class Processing : public yarp::os::TypedReaderCallback<yarp::sig::Sound>
     yarp::os::BufferedPort<yarp::sig::Sound> port;
     yarp::os::BufferedPort<yarp::os::Bottle> targetPort;
     yarp::os::RpcClient audioCommand;
-    std::string &state; 
-    std::int64_t &elapsed_seconds; 
+    std::string &state;
+    std::int64_t &elapsed_seconds;
 
     std::deque<yarp::sig::Sound> sounds;
 
@@ -95,7 +95,7 @@ class Processing : public yarp::os::TypedReaderCallback<yarp::sig::Sound>
     int sample_rate;
 
     bool uniqueSound;
-    
+
     std::chrono::time_point<std::chrono::system_clock> start, end;
 
 public:
@@ -156,13 +156,13 @@ public:
     /********************************************************/
     using yarp::os::TypedReaderCallback<yarp::sig::Sound>::onRead;
     void onRead( yarp::sig::Sound& sound ) override
-    {    
-        std::lock_guard<std::mutex> lg(mtx); 
+    {
+        std::lock_guard<std::mutex> lg(mtx);
 
         if(getSounds)
-        {   
+        {
             int ct = port.getPendingReads();
-            while (ct>padding) 
+            while (ct>padding)
             {
                 ct = port.getPendingReads();
                 yWarning() << "Dropping sound packet -- " << ct << " packet(s) behind";
@@ -172,18 +172,18 @@ public:
         }
 
         if(sendForQuery)
-        {  
+        {
             //unpack sound
             yarp::sig::Sound total;
             total.resize(samples,channels);
             long int at = 0;
             while (!sounds.empty()) {
                 yarp::sig::Sound& tmp = sounds.front();
-                
+
                 yDebug() << "channels " << channels;
                 yDebug() << "samples " << tmp.getSamples();
                 yDebug() << "values " << tmp.get(0,0);
-                
+
                 for (int i=0; i<channels; i++) {
                     for (int j=0; j<tmp.getSamples(); j++) {
                         total.set(tmp.get(j,i),at+j,i);
@@ -194,16 +194,16 @@ public:
                 sounds.pop_front();
             }
             yarp::os::Bottle &outTargets = targetPort.prepare();
-                    
+
             yarp::os::Bottle cmd, rep;
             cmd.addString("stop");
             if (audioCommand.write(cmd, rep))
             {
                 yDebug() << "cmd.addString(stop)" << rep.toString().c_str();
             }
-            
+
             outTargets = queryGoogle(total);
-        
+
             if (!uniqueSound)
                 sendForQuery = false;
 
@@ -218,14 +218,14 @@ public:
     }
 
     /********************************************************/
-    void collectFrame(yarp::sig::Sound& sound) 
+    void collectFrame(yarp::sig::Sound& sound)
     {
         sounds.push_back(sound);
         samples += sound.getSamples();
         channels = sound.getChannels();
         yDebug() <<  (long int) sounds.size() << "sound frames buffered in memory ( " << (long int) samples << " samples)";
     }
-    
+
     /********************************************************/
     yarp::os::Bottle queryGoogle(yarp::sig::Sound& sound)
     {
@@ -245,15 +245,15 @@ public:
         yInfo() << "getSamples " << sound.getSamples();
         yInfo() << "getChannels " << sound.getChannels();
         yInfo() << "getBytesPerSamples " << sound.getBytesPerSample();
-        
+
         auto vec_i = sound.getNonInterleavedAudioRawData();
         //auto vec_i = sound.getInterleavedAudioRawData();
         auto s1 = std::vector<short>(vec_i.begin(), vec_i.end());
-        
+
         yInfo() << "AudioRawData s1.size()" << s1.size();
 
         request.mutable_audio()->mutable_content()->assign((char*)s1.data(), s1.size()*2);
-        
+
         end = std::chrono::system_clock::now();
 
         double start_elapsed_seconds = std::chrono::duration_cast<std::chrono::milliseconds> (end-start).count();
@@ -279,7 +279,7 @@ public:
             // Report the RPC failure.
             yInfo() << rpc_status.error_message();
             b.clear();
-            checkState("Failure_" + status_string); 
+            checkState("Failure_" + status_string);
         }
         else{
             yInfo() << "Size of response " << response.results_size();
@@ -287,10 +287,10 @@ public:
                 checkState("Done");
 
                 // Dump the transcript of all the results.
-                for (int r = 0; r < response.results_size(); ++r) 
+                for (int r = 0; r < response.results_size(); ++r)
                 {
                     auto result = response.results(r);
-                    for (int a = 0; a < result.alternatives_size(); ++a) 
+                    for (int a = 0; a < result.alternatives_size(); ++a)
                     {
                         auto alternative = result.alternatives(a);
                         yInfo() << alternative.confidence();
@@ -325,21 +325,22 @@ public:
         config->set_language_code(language.c_str());
         config->set_sample_rate_hertz(sample_rate);
         config->set_encoding(RecognitionConfig::LINEAR16);
-        
+
         config->set_use_enhanced(true);
         auto r2 = config->mutable_metadata();
 
         r2->set_microphone_distance(google::cloud::speech::v1::RecognitionMetadata_MicrophoneDistance_FARFIELD);
         r2->set_recording_device_type(google::cloud::speech::v1::RecognitionMetadata_RecordingDeviceType_VEHICLE);
         r2->set_interaction_type(google::cloud::speech::v1::RecognitionMetadata_InteractionType_VOICE_COMMAND);
+        config->add_speech_contexts()->add_phrases("sì");
+        config->add_speech_contexts()->add_phrases("no");
         config->PrintDebugString();
-        
     }
 
     /********************************************************/
     bool start_acquisition()
-    {           
-        std::lock_guard<std::mutex> lg(mtx); 
+    {
+        std::lock_guard<std::mutex> lg(mtx);
         yarp::os::Bottle cmd, rep;
         //cmd.addVocab(yarp::os::Vocab::encode("start"));
         cmd.addString("start");
@@ -347,7 +348,7 @@ public:
         {
             yDebug() << "cmd.addString(start)" << rep.toString().c_str();
         }
-        
+
         start = std::chrono::system_clock::now();
         getSounds = true;
         checkState("Listening");
@@ -356,19 +357,19 @@ public:
 
     /********************************************************/
     bool stop_acquisition()
-    {   
-        std::lock_guard<std::mutex> lg(mtx); 
-        
-        if (!uniqueSound) 
+    {
+        std::lock_guard<std::mutex> lg(mtx);
+
+        if (!uniqueSound)
             getSounds = false;
 
         sendForQuery = true;
         checkState("Busy");
         return true;
-    } 
+    }
     /********************************************************/
     bool checkState(std::string new_state)
-    {   
+    {
         if(new_state!=state){
             is_changed=true;
             state=new_state;
@@ -415,10 +416,10 @@ public:
         std::string moduleName = rf.check("name", yarp::os::Value("googleSpeech"), "module name (string)").asString();
         std::string language = rf.check("language_code", yarp::os::Value("en-US"), "language (string)").asString();
         int sample_rate = rf.check("sample_rate_hertz", yarp::os::Value(16000), "sample rate (int)").asInt();
-        
+
         if (rf.check("uniqueSound", "use a yarp::sig::Sound instead of a microphone"))
             uniqueSound = true;
-        
+
         if (rf.check("languageCodes", "Getting language codes"))
         {
             yarp::os::Bottle &grp=rf.findGroup("languageCodes");
@@ -442,7 +443,7 @@ public:
 
         if (uniqueSound)
             processing->setUsingUniqueSound();
-        
+
         attach(rpcPort);
 
         return true;
@@ -452,9 +453,9 @@ public:
     bool setLanguage(const std::string& languageCode)
     {
         bool returnVal = false;
-        
+
         std::string language;
-        
+
         for (int i = 0; i < allLanguageCodes.size(); i++)
         {
             if (languageCode == allLanguageCodes[i])
@@ -478,7 +479,7 @@ public:
 
     /**********************************************************/
     bool close()
-    {   
+    {
         statePort.close();
         processing->close();
         delete processing;
@@ -514,26 +515,26 @@ public:
 
     /********************************************************/
     bool updateModule()
-    {   
+    {
         if(is_changed){
             is_changed=false;
-            yarp::os::Bottle &outTargets = statePort.prepare();   
-            outTargets.clear();  
+            yarp::os::Bottle &outTargets = statePort.prepare();
+            outTargets.clear();
             outTargets.addString(state);
             yDebug() << "outTarget:" << outTargets.toString().c_str();
             statePort.write();
-        }    
+        }
         return !closing;
     }
        /********************************************************/
     std::string getState()
-    {  
+    {
         return state;
     }
- 
+
     /********************************************************/
     std::int64_t getProcessingTime()
-    {  
+    {
         return elapsed_seconds;
     }
 
