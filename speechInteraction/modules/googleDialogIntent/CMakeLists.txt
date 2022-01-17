@@ -2,7 +2,7 @@
 # All Rights Reserved.
 # Authors: Vadim Tikhanoff <vadim.tikhanoff@iit.it>
 
-project(googleDialog)
+project(googleDialogIntent)
 
 yarp_add_idl(IDL_GEN_FILES ${PROJECT_NAME}.thrift)
 
