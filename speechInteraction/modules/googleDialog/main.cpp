@@ -158,55 +158,43 @@ public:
     {
         std::string text = bottle.toString();
         yarp::os::Bottle result;
-        //google::cloud::dialogflow::cx::v3beta1::TextInput text_input;
-        //google::cloud::dialogflow::cx::v3beta1::QueryInput query_input;
-
-        //std::string language_code = "en-English";
-        //text_input.set_text(text.c_str());
-        //query_input.set_allocated_text(&text_input);
-        //query_input.set_language_code(language_code);
 
         grpc::Status status;
         grpc::ClientContext context;
 
         ListIntentsRequest request;
         ListIntentsResponse response;
+
+        // param of the request
         std::string parent = "projects/team-code-dev/locations/global/agents/fbfc6fd6-065b-4415-a044-0a7190480b89";
         request.set_parent(parent);
-        /*request.set_session(agent_name+"/environments/draft/sessions/"+session_id);
-        request.set_allocated_query_input(&query_input);
-        std::string user_express = request.query_input().text().text();
-        yInfo() << "End-user expression:" << user_express;*/
+
         if(request.parent() != ""){
             input_is_empty=false;
             auto creds = grpc::GoogleDefaultCredentials();
             auto channel = grpc::CreateChannel("dialogflow.googleapis.com", creds);
             std::unique_ptr<Intents::Stub> dialog (Intents::NewStub(channel));
+
+            // time request
             yarp::os::Time::delay(0.2);
             const std::chrono::time_point<std::chrono::steady_clock> start = std::chrono::steady_clock::now();
 
             grpc::Status dialog_status = dialog->ListIntents(&context, request, &response);
-            std::string status_string = status_code_to_string.at(dialog_status.error_code());
             result.clear();
+
             if ( dialog_status.ok() ) {
+                // time request
                 const auto end = std::chrono::steady_clock::now();
                 processing_time = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
                 yDebug() << "Request processing time: " << processing_time << "µs";  
 
                 yInfo() << "Status returned OK";
                 yInfo() << "\n------Response------\n";
-                // if (response.intents().size() > 0) 
-                // {
-                    //result.addString(response.query_result().response_messages().Get(0).text().text().Get(0).c_str());
-                    for (auto intent_local: response.intents()) {
-                    yError() << "intent" << intent_local.display_name().c_str();
 
-                    }
-                // }
-                // else if (reset)
-                // {
-                //     reset=false;
-                // }
+                for (auto intent_local: response.intents()) {
+                    yError() << "intent" << intent_local.display_name().c_str();
+                }
+
             } 
             else if ( !dialog_status.ok() ) {
                 yError() << "Status Returned Cancelled";
