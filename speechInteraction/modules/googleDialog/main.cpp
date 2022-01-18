@@ -177,18 +177,16 @@ public:
         request.set_allocated_query_input(&query_input);
         std::string user_express = request.query_input().text().text();
         yInfo() << "End-user expression:" << user_express;*/
-        if(request.query_input().text().text().size()>0){
+        if(request.parent() != ""){
             input_is_empty=false;
             auto creds = grpc::GoogleDefaultCredentials();
             auto channel = grpc::CreateChannel("dialogflow.googleapis.com", creds);
-            std::unique_ptr<Sessions::Stub> dialog (Sessions::NewStub(channel));
-            checkState("Busy");
+            std::unique_ptr<Intents::Stub> dialog (Intents::NewStub(channel));
             yarp::os::Time::delay(0.2);
             const std::chrono::time_point<std::chrono::steady_clock> start = std::chrono::steady_clock::now();
 
-            grpc::Status dialog_status = dialog->DetectIntent(&context, request, &response);
+            grpc::Status dialog_status = dialog->ListIntents(&context, request, &response);
             std::string status_string = status_code_to_string.at(dialog_status.error_code());
-
             result.clear();
             if ( dialog_status.ok() ) {
                 const auto end = std::chrono::steady_clock::now();
@@ -197,36 +195,25 @@ public:
 
                 yInfo() << "Status returned OK";
                 yInfo() << "\n------Response------\n";
-                if (response.query_result().response_messages().size() > 0 && response.query_result().response_messages().Get(0).text().text().size() > 0) 
-                {
-                    result.addString(response.query_result().response_messages().Get(0).text().text().Get(0).c_str());
-                    yDebug() << "result bottle" << result.toString();
-                    checkState("Done");
-                }
-                else if (reset)
-                {
-                    checkState("Reset");
-                    reset=false;
-                }
-                else
-                {
-                    checkState("Empty");
-                }
+                // if (response.intents().size() > 0) 
+                // {
+                    //result.addString(response.query_result().response_messages().Get(0).text().text().Get(0).c_str());
+                    for (auto intent_local: response.intents()) {
+                    yError() << "intent" << intent_local.display_name().c_str();
+
+                    }
+                // }
+                // else if (reset)
+                // {
+                //     reset=false;
+                // }
             } 
             else if ( !dialog_status.ok() ) {
                 yError() << "Status Returned Cancelled";
-                checkState("Failure_" + status_string); 
-                yInfo() << dialog_status.error_message();
             }	      
         }
-        else if (request.query_input().text().text().size()==0){
-            input_is_empty=true;
-            yError() << "Input is empty";
-        }
-        request.release_query_input();
-        query_input.release_text();
         return result;
-   }
+    }
 
    /********************************************************/
     bool setLanguageCode(const std::string &languageCode)
@@ -428,22 +415,32 @@ public:
 int main(int argc, char *argv[])
 {
     yarp::os::Network::init();
+    yInfo() << "starting";
 
     yarp::os::Network yarp;
+    yInfo() << __LINE__;
+
     if (!yarp.checkNetwork())
     {
         yError("YARP server not available!");
         return 1;
     }
+    yInfo() << __LINE__;
+
 
     Module module;
     yarp::os::ResourceFinder rf;
 
     rf.setVerbose( true );
     rf.setDefaultContext( "googleDialog" );
+        yInfo() << __LINE__;
+
     rf.setDefaultConfigFile( "config.ini" );
+    yInfo() << __LINE__;
     rf.setDefault("name","googleDialog");
+    yInfo() << __LINE__;
     rf.configure(argc,argv);
+    yInfo() << "before configure" << __LINE__;
 
     return module.runModule(rf);
 }
