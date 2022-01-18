@@ -158,24 +158,25 @@ public:
     {
         std::string text = bottle.toString();
         yarp::os::Bottle result;
-        google::cloud::dialogflow::cx::v3beta1::TextInput text_input;
-        google::cloud::dialogflow::cx::v3beta1::QueryInput query_input;
+        //google::cloud::dialogflow::cx::v3beta1::TextInput text_input;
+        //google::cloud::dialogflow::cx::v3beta1::QueryInput query_input;
 
         //std::string language_code = "en-English";
-        text_input.set_text(text.c_str());
-        query_input.set_allocated_text(&text_input);
-        query_input.set_language_code(language_code);
+        //text_input.set_text(text.c_str());
+        //query_input.set_allocated_text(&text_input);
+        //query_input.set_language_code(language_code);
 
         grpc::Status status;
         grpc::ClientContext context;
 
-        DetectIntentRequest request;
-        DetectIntentResponse response;
-
-        request.set_session(agent_name+"/environments/draft/sessions/"+session_id);
+        ListIntentsRequest request;
+        ListIntentsResponse response;
+        std::string parent = "projects/team-code-dev/locations/global/agents/fbfc6fd6-065b-4415-a044-0a7190480b89";
+        request.set_parent(parent);
+        /*request.set_session(agent_name+"/environments/draft/sessions/"+session_id);
         request.set_allocated_query_input(&query_input);
         std::string user_express = request.query_input().text().text();
-        yInfo() << "End-user expression:" << user_express;
+        yInfo() << "End-user expression:" << user_express;*/
         if(request.query_input().text().text().size()>0){
             input_is_empty=false;
             auto creds = grpc::GoogleDefaultCredentials();
